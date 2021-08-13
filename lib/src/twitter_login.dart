@@ -6,8 +6,9 @@ import 'package:twitter_login/entity/auth_result.dart';
 import 'package:twitter_login/entity/user.dart';
 import 'package:twitter_login/schemes/access_token.dart';
 import 'package:twitter_login/schemes/request_token.dart';
-import 'package:twitter_login/src/auth_browser.dart';
+import 'package:twitter_login/auth_browser/index.dart';
 import 'package:twitter_login/src/exception.dart';
+import 'package:universal_platform/universal_platform.dart';
 
 /// The status after a Twitter login flow has completed.
 enum TwitterLoginStatus {
@@ -67,7 +68,7 @@ class TwitterLogin {
     final completer = Completer<String>();
     late StreamSubscription subscribe;
 
-    if (Platform.isAndroid) {
+    if (UniversalPlatform.isAndroid) {
       await _channel.invokeMethod('setScheme', uri.scheme);
       subscribe = _eventStream.listen((data) async {
         if (data['type'] == 'url') {
@@ -89,10 +90,10 @@ class TwitterLogin {
     );
 
     try {
-      if (Platform.isIOS) {
+      if (UniversalPlatform.isIOS) {
         /// Login to Twitter account with SFAuthenticationSession or ASWebAuthenticationSession.
         resultURI = await authBrowser.doAuth(requestToken.authorizeURI, uri.scheme);
-      } else if (Platform.isAndroid) {
+      } else if (UniversalPlatform.isAndroid) {
         // Login to Twitter account with chrome_custom_tabs.
         final success = await authBrowser.open(requestToken.authorizeURI, uri.scheme);
         if (!success) {
@@ -103,7 +104,10 @@ class TwitterLogin {
         }
         resultURI = await completer.future;
         subscribe.cancel();
-      } else {
+      } else if (UniversalPlatform.isWeb) {
+        // Login to Twitter account with web browser.
+        resultURI = await authBrowser.doAuth(requestToken.authorizeURI, uri.scheme);
+      }else {
         throw PlatformException(
           code: '100',
           message: 'Not supported by this os.',
